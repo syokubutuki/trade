@@ -9,10 +9,13 @@ import {
   generateHumanCurve,
   calculateComparison,
 } from "./lib/trading-engine";
+import { IndicatorType } from "./lib/indicators";
 import TickerInput from "./components/TickerInput";
 import TradingPanel from "./components/TradingPanel";
 import ComparisonDisplay from "./components/ComparisonDisplay";
 import TradeHistory from "./components/TradeHistory";
+import IndicatorSelector from "./components/IndicatorSelector";
+import TradeCriteria from "./components/TradeCriteria";
 
 const StockChart = dynamic(() => import("./components/StockChart"), {
   ssr: false,
@@ -28,6 +31,18 @@ export default function Home() {
   const { state, buy, sell, reset } = useTradingState();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedPrice, setSelectedPrice] = useState<number | null>(null);
+  const [activeIndicators, setActiveIndicators] = useState<Set<IndicatorType>>(
+    new Set()
+  );
+
+  const handleToggleIndicator = useCallback((id: IndicatorType) => {
+    setActiveIndicators((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   const prices = data?.prices ?? [];
   const currency = data?.currency ?? "JPY";
@@ -85,7 +100,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2">
           <h1 className="text-xl font-bold text-gray-900">
             Buy &amp; Hold vs あなたのトレード
           </h1>
@@ -93,6 +108,12 @@ export default function Home() {
             1年前に買って放置 vs 裁量トレード。頻繁な売買は本当に得なのか?
           </p>
         </div>
+        <a
+          href="/analysis"
+          className="text-sm text-blue-600 hover:text-blue-800 underline"
+        >
+          構造分析ツール
+        </a>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
@@ -109,6 +130,7 @@ export default function Home() {
         )}
 
         {data && (
+          <>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-4">
               <StockChart
@@ -118,6 +140,7 @@ export default function Home() {
                 humanCurve={humanCurve}
                 selectedDate={selectedDate}
                 onDateClick={handleDateClick}
+                activeIndicators={activeIndicators}
               />
               <TradeHistory
                 trades={state.trades}
@@ -127,6 +150,10 @@ export default function Home() {
             </div>
 
             <div className="space-y-4">
+              <IndicatorSelector
+                active={activeIndicators}
+                onToggle={handleToggleIndicator}
+              />
               <TradingPanel
                 state={state}
                 selectedDate={selectedDate}
@@ -144,6 +171,8 @@ export default function Home() {
               />
             </div>
           </div>
+          <TradeCriteria prices={prices} trades={state.trades} />
+          </>
         )}
 
         {!data && !loading && !error && (
